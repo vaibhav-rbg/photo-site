@@ -5,31 +5,23 @@ const fs = require("fs");
 
 const app = express();
 
-/* -------------------- IMPORTANT FIX -------------------- */
-/* These allow Express to properly read form fields and avoid
-   silent failures with multer + fetch FormData */
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+/* -------------------- IMPORTANT FOR RENDER -------------------- */
+/* Render runs Linux. Relative paths like "uploads/" randomly fail.
+   We must use an absolute path. */
 
-/* ------------------------------------------------------- */
-
-// Ensure uploads folder exists
 const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-// Multer storage to save photos with readable names
+/* -------------------- MULTER STORAGE -------------------- */
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
   filename: (req, file, cb) => {
-    // qr_id sometimes arrives AFTER multer parses file,
-    // so we safely fallback
-    let qrID = "unknown";
-
-    if (req.body && req.body.qr_id) {
-      qrID = req.body.qr_id;
-    }
-
+    const qrID = req.body.qr_id || "unknown";
     const timestamp = Date.now();
     cb(null, `${qrID}_${timestamp}.png`);
   }
@@ -37,29 +29,26 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-/* Serve frontend files */
+/* -------------------- STATIC FRONTEND -------------------- */
+
 app.use(express.static(path.join(__dirname, "public")));
 
-/* Endpoint to receive photo */
+/* -------------------- UPLOAD ENDPOINT -------------------- */
+
 app.post("/api/upload", upload.single("photo"), (req, res) => {
-  try {
-    if (!req.file) {
-      console.log("No file received");
-      return res.status(400).json({ status: "no_file" });
-    }
-
-    console.log(`Photo received! File: ${req.file.filename}`);
-    res.json({ status: "success" });
-
-  } catch (err) {
-    console.error("Upload error:", err);
-    res.status(500).json({ status: "error" });
+  if (!req.file) {
+    return res.status(400).json({ status: "failed" });
   }
+
+  console.log("Photo received:", req.file.filename);
+  res.json({ status: "success" });
 });
 
-/* Start server */
-const PORT = 3000;
-app.listen(PORT, "0.0.0.0", () =>
-  console.log(`Server running on http://localhost:${PORT}`)
-);
+/* -------------------- RENDER PORT FIX -------------------- */
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
 
